@@ -1044,6 +1044,7 @@ def classify_ode(eq, func=None, dict=False, ics=None, **kwargs):
         Bernoulli: ('Bernoulli',),
         Factorable: ('factorable',),
         RiccatiSpecial: ('Riccati_special_minus2',),
+        SecondLiouville: ('Liouville')
     }
     for solvercls in solvers:
         solver = solvercls(ode)
@@ -8456,4 +8457,4 @@ def _nonlinear_3eq_order1_type5(x, y, z, t, eq):
 
 #This import is written at the bottom to avoid circular imports.
 from .single import (NthAlgebraic, Factorable, FirstLinear, AlmostLinear,
-        Bernoulli, SingleODEProblem, SingleODESolver, RiccatiSpecial)
+        Bernoulli, SingleODEProblem, SingleODESolver, RiccatiSpecial, SecondLiouville)

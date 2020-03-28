@@ -104,7 +104,7 @@ Bernoulli
 
 Liouville
 ^^^^^^^^^
-.. autofunction:: sympy.solvers.ode.ode.ode_Liouville
+.. autoclass:: sympy.solvers.ode.single.SecondLiouville
 
 Riccati_special_minus2
 ^^^^^^^^^^^^^^^^^^^^^^

@@ -7,7 +7,7 @@ from typing import ClassVar, Dict, Iterable, List, Optional, Type
 from sympy.core import S
 from sympy.core.exprtools import factor_terms
 from sympy.core.expr import Expr
-from sympy.core.function import AppliedUndef, Derivative, Function, expand
+from sympy.core.function import AppliedUndef, Derivative, Function, expand, diff
 from sympy.core.relational import Equality, Eq
 from sympy.core.symbol import Symbol, Dummy, Wild
 from sympy.functions import exp, sqrt, tan, log
@@ -756,6 +756,112 @@ class RiccatiSpecial(SinglePatternODESolver):
 
         gensol = Eq(fx, (a - c - mu*tan(mu/(2*a)*log(x) + C1))/(2*b*x))
         return [gensol]
+
+
+class SecondLiouville(SinglePatternODESolver):
+    r"""
+    Solves 2nd order Liouville differential equations.
+
+    The general form of a Liouville ODE is
+
+    .. math:: \frac{d^2 y}{dx^2} + g(y) \left(\!
+                \frac{dy}{dx}\!\right)^2 + h(x)
+                \frac{dy}{dx}\text{.}
+
+    The general solution is:
+
+        >>> from sympy import Function, dsolve, Eq, pprint, diff
+        >>> from sympy.abc import x
+        >>> f, g, h = map(Function, ['f', 'g', 'h'])
+        >>> genform = Eq(diff(f(x),x,x) + g(f(x))*diff(f(x),x)**2 +
+        ... h(x)*diff(f(x),x), 0)
+        >>> pprint(genform)
+                          2                    2
+                /d       \         d          d
+        g(f(x))*|--(f(x))|  + h(x)*--(f(x)) + ---(f(x)) = 0
+                \dx      /         dx           2
+                                              dx
+        >>> pprint(dsolve(genform, f(x), hint='Liouville_Integral'))
+                                          f(x)
+                  /                     /
+                 |                     |
+                 |     /               |     /
+                 |    |                |    |
+                 |  - | h(x) dx        |    | g(y) dy
+                 |    |                |    |
+                 |   /                 |   /
+        C1 + C2* | e            dx +   |  e           dy = 0
+                 |                     |
+                /                     /
+
+    Examples
+    ========
+
+    >>> from sympy import Function, dsolve, Eq, pprint
+    >>> from sympy.abc import x
+    >>> f = Function('f')
+    >>> pprint(dsolve(diff(f(x), x, x) + diff(f(x), x)**2/f(x) +
+    ... diff(f(x), x)/x, f(x), hint='Liouville'))
+               ________________           ________________
+    [f(x) = -\/ C1 + C2*log(x) , f(x) = \/ C1 + C2*log(x) ]
+
+    References
+    ==========
+
+    - Goldstein and Braun, "Advanced Methods for the Solution of Differential
+      Equations", pp. 98
+    - http://www.maplesoft.com/support/help/Maple/view.aspx?path=odeadvisor/Liouville
+
+    # indirect doctest
+
+    """
+
+    hint = "Liouville"
+    has_integral = True
+    order = [2]
+
+
+    def _verify(self, fx) -> bool:
+        print('Verifying...')
+        x = self.ode_problem.sym
+        d, e , k = self.wilds_match()
+
+        if simplify(d) == 0:
+            return False
+        y = Dummy('y')
+        self.g = simplify(e/d).subs(fx, y)
+        self.h = simplify(k/d).subs(fx, y)
+
+        if y in self.h.free_symbols or x in self.g.free_symbols:
+            return False
+
+        return True
+
+    def _wilds(self, f, x, order):
+        df = diff(f(x),x)
+        ddf = diff(f(x), x, x)
+
+        d = Wild('d', exclude=[df, ddf])
+        e = Wild('e', exclude=[df, ddf])
+        k = Wild('k', exclude=[df, ddf])
+        return d, e, k
+
+    def _equation(self, fx, x, order):
+        d, e, k = self.wilds()
+        return d*diff(fx, x, x) + e*diff(fx, x)**2 + k*diff(fx, x)
+
+    def _get_general_solution(self, *, simplify: bool = True):
+        x = self.ode_problem.sym
+        fx = self.ode_problem.func
+        y = Dummy('y')
+        g = self.g
+        h = self.h
+        C1, C2 = self.ode_problem.get_numbered_constants(num=2, start=1)
+        sol = Eq(Subs(Integral(exp(Integral(g, y)), (y, None, fx))
+                      + C1*Integral(exp(-Integral(h, x)), x) + C2, y, fx), 0)
+        return sol
+
+
 
 
 # Avoid circular import:
